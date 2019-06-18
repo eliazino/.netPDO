@@ -1,5 +1,5 @@
 **.NetPDO** allows you to connect to database in  c# PDO style.
-
+```cs
 	/*
 	* Samples
 	*/
@@ -31,3 +31,4 @@
 	} 
 	//Selects Rows from DB. Usage selectFromQuery(query, parameters, isObj)
 	NetPDOv2.dbTransactions.queryResult result = dbtrans.selectFromQuery("SELECT * FROM table WHERE column = ?", new string[] { "value" }, true); //If Query is successful, result.resultAsObject will return have the result
+    ```

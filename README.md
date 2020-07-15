@@ -31,3 +31,8 @@ if (dbtrans.isExist("SELECT id FROM table WHERE condition = true", new string[]{
 } 
 //Selects Rows from DB. Usage selectFromQuery(query, parameters, isObj)
 NetPDOv2.dbTransactions.queryResult result = dbtrans.selectFromQuery("SELECT * FROM table WHERE column = ?", new string[] { "value" }, true); //If Query is successful, result.resultAsObject will return have the result
+```
+** Updates **
+- `isAlive` Optional parameter in `connect()` Now allows MySQL connection to be reused
+- `close()` Now allows Connection to be closed manually if the `connect(true)`
+- `lastAffectedRow` shows number of affected rows

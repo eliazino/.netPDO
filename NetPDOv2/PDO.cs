@@ -11,6 +11,8 @@ namespace NetPDOv2 {
     public class PDO {
         private string connectionString = @"server=localhost;username=root;password=;database=db";
         private string statement;
+        public int lastAffectedRow;
+        private bool stayAlive;
         private MySqlConnection connection;
         MySqlCommand command;
         public void _connect() {
@@ -31,21 +33,28 @@ namespace NetPDOv2 {
             }
             return command;
         }
-        public void prepare(string sql) {
+        public void prepare(string sql, bool isAt = true) {
+            sql = isAt ? sql.Replace(':', '@') : sql;
             string[] strings = sql.Split('?');
             string nstr = "";
             if (strings.Length == 1) {
                 nstr = sql;
             } else {
                 for (int i = 0; i < strings.Length; i++) {
-                    if (!string.IsNullOrEmpty(strings[i])) {
-                        nstr += strings[i] + " @bind" + i.ToString();
+                    if (!string.IsNullOrWhiteSpace(strings[i])) {
+                        string trimmed = strings[i].TrimEnd();
+                        if (i + 1 != strings.Length) {//trimmed.Substring(trimmed.Length-1, 1).Equals("=")) {
+                            nstr += strings[i] + " @bind" + i.ToString();
+                        } else {
+                            nstr += strings[i];
+                        }
                     }
                 }
             }
             statement = nstr;
             try {
                 command = _generateCommand(this.connection);
+                command.Parameters.Clear();
                 command.CommandText = statement;
                 command.CommandType = System.Data.CommandType.Text;
                 command.Connection = this.connection;
@@ -57,22 +66,33 @@ namespace NetPDOv2 {
             command.Parameters.AddWithValue(key, value);
         }
         public void bindValues(string[] values) {
+            command.Parameters.Clear();
             for (int i = 0; i < values.Length; i++) {
                 command.Parameters.AddWithValue("@bind" + i, values[i]);
             }
         }
+        public bool clearParams() {
+            command.Parameters.Clear();
+            return true;
+        }
         public bool execute(bool isFetch = false) {
             try {
-                connection.Open();
-                command.ExecuteNonQuery();
-                if (!isFetch)
+                if (connection != null && connection.State == ConnectionState.Closed)
+                    connection.Open();
+                this.lastAffectedRow = command.ExecuteNonQuery();
+                if (!isFetch && !stayAlive)
                     connection.Close();
                 return true;
             } catch (Exception e) {
                 throw e;
             }
         }
-        public JArray fetchAllAsObj() {
+        public void close() {
+            try {
+                connection.Close();
+            } catch { }
+        }
+        public JArray fetchAllAsObj(bool isAlive = false) {
             DataTable data = new DataTable();
             data.Load(command.ExecuteReader());
             List<Dictionary<string, object>> rows = new List<Dictionary<string, object>>();
@@ -84,10 +104,11 @@ namespace NetPDOv2 {
                 }
                 rows.Add(row);
             }
-            connection.Close();
+            if (!isAlive)
+                connection.Close();
             return (JArray)JsonConvert.DeserializeObject(JsonConvert.SerializeObject(rows, Formatting.Indented));
         }
-        public string fetchAllAsStr() {
+        public string fetchAllAsStr(bool isAlive = false) {
             DataTable data = new DataTable();
             data.Load(command.ExecuteReader());
             List<Dictionary<string, object>> rows = new List<Dictionary<string, object>>();
@@ -99,7 +120,8 @@ namespace NetPDOv2 {
                 }
                 rows.Add(row);
             }
-            connection.Close();
+            if (!isAlive)
+                connection.Close();
             return JsonConvert.SerializeObject(rows, Formatting.Indented);
         }
     }
